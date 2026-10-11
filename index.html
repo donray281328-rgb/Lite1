@@ -1,0 +1,337 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>lite - Lightweight Social Network</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        lite: {
+                            blue: '#1877f2',
+                            darkBlue: '#166fe5',
+                            headerDark: '#1c2733',
+                            bgLight: '#f0f2f5',
+                            bgDark: '#121212',
+                            cardDark: '#1e1e1e',
+                            textDark: '#e4e6eb'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Feather Icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        /* Custom scrollbars for compact Lite feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+        
+        /* Low Data Mode visual transformations */
+        .data-saver img {
+            filter: contrast(0.9) brightness(0.9) blur(0.2px);
+        }
+
+        /* Active Tab Underline */
+        .tab-active {
+            border-bottom: 3px solid #1877f2;
+            color: #1877f2 !important;
+        }
+        .dark .tab-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6 !important;
+        }
+
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body 
+    x-data="liteApp()" 
+    x-init="initApp()"
+    :class="{ 'dark bg-lite-bgDark text-lite-textDark': darkMode, 'bg-lite-bgLight text-gray-900': !darkMode, 'data-saver': dataSaver }"
+    class="font-sans antialiased min-h-screen pb-16 md:pb-0 transition-colors duration-200">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 bg-lite-blue text-white shadow-md transition-colors duration-200">
+        <div class="max-w-4xl mx-auto px-3 py-2 flex items-center justify-between gap-2">
+            <!-- Brand & Search -->
+            <div class="flex items-center gap-2 flex-1">
+                <span class="text-2xl font-black tracking-tighter cursor-pointer select-none" @click="activeTab = 'home'">lite</span>
+                <div class="relative flex-1 max-w-xs">
+                    <input 
+                        type="text" 
+                        x-model="searchQuery" 
+                        placeholder="Search lite..." 
+                        class="w-full text-xs bg-white/20 text-white placeholder-white/70 px-3 py-1.5 pl-8 rounded-full focus:outline-none focus:bg-white focus:text-gray-900 focus:placeholder-gray-400 transition"
+                    />
+                    <i data-feather="search" class="w-3.5 h-3.5 absolute left-2.5 top-2 text-white/80"></i>
+                    <button x-show="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1.5 text-xs text-white/70 hover:text-white">✕</button>
+                </div>
+            </div>
+
+            <!-- Quick Controls -->
+            <div class="flex items-center gap-1.5">
+                <!-- Data Saver Toggle Button -->
+                <button 
+                    @click="dataSaver = !dataSaver" 
+                    title="Toggle Data Saver Mode"
+                    :class="dataSaver ? 'bg-amber-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'"
+                    class="px-2 py-1 rounded text-xs font-bold flex items-center gap-1 transition">
+                    <i data-feather="wifi" class="w-3 h-3"></i>
+                    <span class="hidden sm:inline" x-text="dataSaver ? 'Data Saver ON' : 'Data Saver'"></span>
+                </button>
+
+                <!-- Theme Toggle -->
+                <button 
+                    @click="darkMode = !darkMode" 
+                    class="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition"
+                    title="Toggle Dark/Light Mode">
+                    <i :data-feather="darkMode ? 'sun' : 'moon'" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="max-w-4xl mx-auto flex justify-between border-t border-white/10 text-white/70 bg-lite-blue">
+            <button 
+                @click="activeTab = 'home'" 
+                :class="{ 'tab-active text-white bg-white/10': activeTab === 'home' }"
+                class="flex-1 py-2.5 flex justify-center items-center relative hover:bg-white/5 transition">
+                <i data-feather="home" class="w-5 h-5"></i>
+            </button>
+            <button 
+                @click="activeTab = 'friends'" 
+                :class="{ 'tab-active text-white bg-white/10': activeTab === 'friends' }"
+                class="flex-1 py-2.5 flex justify-center items-center relative hover:bg-white/5 transition">
+                <i data-feather="users" class="w-5 h-5"></i>
+                <span x-show="friendRequests.length > 0" class="absolute top-1 right-1/4 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center" x-text="friendRequests.length"></span>
+            </button>
+            <button 
+                @click="activeTab = 'messages'" 
+                :class="{ 'tab-active text-white bg-white/10': activeTab === 'messages' }"
+                class="flex-1 py-2.5 flex justify-center items-center relative hover:bg-white/5 transition">
+                <i data-feather="message-circle" class="w-5 h-5"></i>
+                <span x-show="unreadMessageCount() > 0" class="absolute top-1 right-1/4 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center" x-text="unreadMessageCount()"></span>
+            </button>
+            <button 
+                @click="activeTab = 'notifications'" 
+                :class="{ 'tab-active text-white bg-white/10': activeTab === 'notifications' }"
+                class="flex-1 py-2.5 flex justify-center items-center relative hover:bg-white/5 transition">
+                <i data-feather="bell" class="w-5 h-5"></i>
+                <span x-show="unreadNotificationCount() > 0" class="absolute top-1 right-1/4 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center" x-text="unreadNotificationCount()"></span>
+            </button>
+            <button 
+                @click="activeTab = 'menu'" 
+                :class="{ 'tab-active text-white bg-white/10': activeTab === 'menu' }"
+                class="flex-1 py-2.5 flex justify-center items-center relative hover:bg-white/5 transition">
+                <i data-feather="menu" class="w-5 h-5"></i>
+            </button>
+        </nav>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="max-w-2xl mx-auto p-2 sm:p-4">
+
+        <!-- SEARCH OVERLAY RESULTS -->
+        <template x-if="searchQuery.trim() !== ''">
+            <div class="mb-4 bg-white dark:bg-lite-cardDark rounded-lg shadow p-3">
+                <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Search Results for "<span x-text="searchQuery"></span>"</h3>
+                <div class="space-y-2">
+                    <template x-for="post in filteredPosts" :key="post.id">
+                        <div class="p-2 border-b dark:border-gray-800 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded" @click="searchQuery = ''; activeTab = 'home'">
+                            <span class="font-bold" x-text="post.author"></span>: <span x-text="post.content.substring(0,60) + '...'"></span>
+                        </div>
+                    </template>
+                    <template x-if="filteredPosts.length === 0">
+                        <p class="text-xs text-gray-500 italic">No posts match your search query.</p>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- TAB 1: HOME FEED -->
+        <div x-show="activeTab === 'home'" class="space-y-3">
+            
+            <!-- STORIES CAROUSEL -->
+            <div class="bg-white dark:bg-lite-cardDark rounded-lg shadow p-2.5 overflow-x-auto">
+                <div class="flex space-x-2 min-w-max">
+                    <!-- Create Story Button -->
+                    <div @click="triggerStoryUpload()" class="relative w-20 h-32 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border dark:border-gray-700 flex flex-col justify-between cursor-pointer group hover:opacity-95 transition">
+                        <img :src="currentUser.avatar" class="w-full h-20 object-cover" />
+                        <div class="absolute top-16 left-1/2 -translate-x-1/2 bg-lite-blue border-2 border-white dark:border-lite-cardDark rounded-full p-1 text-white">
+                            <i data-feather="plus" class="w-3.5 h-3.5"></i>
+                        </div>
+                        <span class="text-[10px] font-bold text-center pb-1 text-gray-700 dark:text-gray-200">Add Story</span>
+                    </div>
+
+                    <!-- Friend Stories -->
+                    <template x-for="(story, index) in stories" :key="story.id">
+                        <div 
+                            @click="openStoryModal(index)"
+                            class="relative w-20 h-32 rounded-lg overflow-hidden cursor-pointer group hover:scale-[1.02] transition border-2"
+                            :class="story.viewed ? 'border-gray-300 dark:border-gray-700' : 'border-lite-blue'">
+                            <img :src="story.image" class="w-full h-full object-cover" />
+                            <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
+                            <img :src="story.avatar" class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full border border-white object-cover" />
+                            <span class="absolute bottom-1 left-1 right-1 text-[10px] font-medium text-white truncate" x-text="story.author"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- CREATE POST WIDGET -->
+            <div class="bg-white dark:bg-lite-cardDark rounded-lg shadow p-3">
+                <div class="flex items-center space-x-2">
+                    <img :src="currentUser.avatar" class="w-9 h-9 rounded-full object-cover border dark:border-gray-700" />
+                    <button 
+                        @click="openPostModal = true" 
+                        class="w-full text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 px-3 py-2 rounded-full text-xs transition">
+                        What's on your mind, <span x-text="currentUser.name.split(' ')[0]"></span>?
+                    </button>
+                </div>
+                <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                    <button @click="openPostModal = true; postModalImage = true" class="flex-1 flex justify-center items-center gap-1 hover:bg-gray-50 dark:hover:bg-gray-800 py-1.5 rounded transition text-green-600 dark:text-green-400">
+                        <i data-feather="image" class="w-4 h-4"></i>
+                        <span>Photo</span>
+                    </button>
+                    <button @click="openPostModal = true" class="flex-1 flex justify-center items-center gap-1 hover:bg-gray-50 dark:hover:bg-gray-800 py-1.5 rounded transition text-amber-500">
+                        <i data-feather="smile" class="w-4 h-4"></i>
+                        <span>Feeling</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- POSTS FEED -->
+            <template x-for="post in posts" :key="post.id">
+                <div class="bg-white dark:bg-lite-cardDark rounded-lg shadow text-xs">
+                    <!-- Post Header -->
+                    <div class="p-3 flex justify-between items-start">
+                        <div class="flex items-center space-x-2">
+                            <img :src="post.avatar" class="w-8 h-8 rounded-full object-cover" />
+                            <div>
+                                <div class="font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                                    <span x-text="post.author"></span>
+                                    <span x-show="post.feeling" class="font-normal text-gray-500 text-[11px]" x-text="'is ' + post.feeling"></span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                    <span x-text="post.time"></span> • 
+                                    <i :data-feather="getPrivacyIcon(post.privacy)" class="w-3 h-3"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <i data-feather="more-horizontal" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Post Body -->
+                    <div class="px-3 pb-2 text-gray-800 dark:text-gray-200 leading-relaxed text-xs sm:text-sm" x-text="post.content"></div>
+
+                    <!-- Post Attachment Image -->
+                    <template x-if="post.image">
+                        <div class="bg-black/5 dark:bg-black/20">
+                            <img :src="post.image" class="w-full max-h-96 object-cover" loading="lazy" />
+                        </div>
+                    </template>
+
+                    <!-- Reaction Summary Bar -->
+                    <div class="px-3 py-1.5 flex justify-between items-center text-[11px] text-gray-500 dark:text-gray-400 border-b dark:border-gray-800">
+                        <div class="flex items-center space-x-1">
+                            <span class="bg-lite-blue text-white rounded-full p-0.5 text-[8px]">👍</span>
+                            <span class="bg-red-500 text-white rounded-full p-0.5 text-[8px]">❤️</span>
+                            <span x-text="post.reactionCount"></span>
+                        </div>
+                        <div class="space-x-2">
+                            <span x-text="post.comments.length + ' comments'"></span>
+                            <span>•</span>
+                            <span x-text="post.shares + ' shares'"></span>
+                        </div>
+                    </div>
+
+                    <!-- Reaction Actions -->
+                    <div class="px-2 py-1 flex justify-between items-center text-gray-600 dark:text-gray-300 font-semibold relative">
+                        <!-- Like button with Reaction Popover -->
+                        <div class="relative flex-1" x-data="{ showReactions: false }">
+                            <button 
+                                @click="toggleLike(post)" 
+                                @mouseenter="showReactions = true"
+                                @mouseleave="setTimeout(() => showReactions = false, 2000)"
+                                class="w-full py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex justify-center items-center gap-1 transition"
+                                :class="post.userReaction ? 'text-lite-blue font-bold' : ''">
+                                <span x-text="post.userReaction || '👍'"></span>
+                                <span x-text="post.userReaction ? post.userReactionType : 'Like'"></span>
+                            </button>
+
+                            <!-- Reaction Picker Popup -->
+                            <div 
+                                x-show="showReactions" 
+                                @mouseenter="showReactions = true"
+                                @mouseleave="showReactions = false"
+                                x-transition
+                                class="absolute bottom-full left-0 mb-1 bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700 rounded-full px-2 py-1 flex gap-2 z-20">
+                                <button @click="reactToPost(post, 'Like', '👍')" class="hover:scale-125 transition text-base">👍</button>
+                                <button @click="reactToPost(post, 'Love', '❤️')" class="hover:scale-125 transition text-base">❤️</button>
+                                <button @click="reactToPost(post, 'Care', '🥰')" class="hover:scale-125 transition text-base">🥰</button>
+                                <button @click="reactToPost(post, 'Haha', '😆')" class="hover:scale-125 transition text-base">😆</button>
+                                <button @click="reactToPost(post, 'Wow', '😮')" class="hover:scale-125 transition text-base">😮</button>
+                                <button @click="reactToPost(post, 'Sad', '😢')" class="hover:scale-125 transition text-base">😢</button>
+                                <button @click="reactToPost(post, 'Angry', '😡')" class="hover:scale-125 transition text-base">😡</button>
+                            </div>
+                        </div>
+
+                        <!-- Comment Button -->
+                        <button @click="post.showComments = !post.showComments" class="flex-1 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex justify-center items-center gap-1 transition">
+                            <i data-feather="message-square" class="w-3.5 h-3.5"></i>
+                            <span>Comment</span>
+                        </button>
+
+                        <!-- Share Button -->
+                        <button @click="sharePost(post)" class="flex-1 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex justify-center items-center gap-1 transition">
+                            <i data-feather="share-2" class="w-3.5 h-3.5"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div x-show="post.showComments" class="p-3 bg-gray-50 dark:bg-gray-900/50 border-t dark:border-gray-800 rounded-b-lg space-y-2">
+                        <!-- Add Comment Input -->
+                        <div class="flex gap-2">
+                            <img :src="currentUser.avatar" class="w-6 h-6 rounded-full object-cover" />
+                            <div class="flex-1 flex gap-1">
+                                <input 
+                                    type="text" 
+                                    x-model="post.newCommentText" 
+                                    @keydown.enter="addComment(post)"
+                                    placeholder="Write a lightweight comment..." 
+                                    class="flex-1 bg-white dark:bg-gray-800 border dark:border-gray-700 text-xs rounded-full px-3 py-1 focus:outline-none focus:border-lite-blue"
+                                />
+                                <button @click="addComment(post)" class="bg-lite-blue text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-lite-darkBlue">Post</button>
+                            </div>
+                        </div>
+
+                      
